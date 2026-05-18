@@ -120,6 +120,8 @@ fn main() {
     });
 
     drop(spawner);
+    
+    println!("Fide's Komputer: hey hey");
 
     executor.run();
 }
