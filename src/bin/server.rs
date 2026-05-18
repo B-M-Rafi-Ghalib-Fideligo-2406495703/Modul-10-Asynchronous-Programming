@@ -5,6 +5,13 @@ use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast::{channel, Sender};
 use tokio_websockets::{Message, ServerBuilder, WebsocketStream};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ChatMessage {
+    username: String,
+    content: String,
+}
 
 async fn handle_connection(
     addr: SocketAddr,
@@ -23,8 +30,16 @@ async fn handle_connection(
                             let text = msg.as_text().unwrap();
                             println!("From client {}: {}", addr, text);
                             
-                            // Ekstraksi IP dan Port, lalu di-prepend ke pesan sebelum di broadcast
-                            let formatted_msg = format!("{}: {}", addr, text);
+                            // Coba parse sebagai JSON (dari Yew client)
+                            let formatted_msg = if let Ok(mut chat_msg) = serde_json::from_str::<ChatMessage>(text) {
+                                // Jika valid JSON, tambahkan IP/Port ke username
+                                chat_msg.username = format!("{} ({})", chat_msg.username, addr);
+                                serde_json::to_string(&chat_msg).unwrap()
+                            } else {
+                                // Jika teks biasa (dari terminal client), biarkan teks biasa dengan prepend IP
+                                format!("{}: {}", addr, text)
+                            };
+                            
                             bcast_tx.send(formatted_msg)?;
                         }
                     }
